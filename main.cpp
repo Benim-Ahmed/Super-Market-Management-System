@@ -25,13 +25,15 @@ struct Product {
     string brand;
 };
 
-struct Cart {
-    int productId;
+struct CartItem {
+    int id;
+    string name;
     int quantity;
+    double price;
 };
 
 // global variables
-Cart item[20];
+CartItem item[20];
 int cartItemsCount = 0;
 string adminUsername = "abc";
 string adminPassword = "123";
@@ -60,6 +62,10 @@ void changeUsername();
 void cart();
 void addToCart();
 void viewCart();
+void printBill();
+string getCurrentDateTime();
+void saveSale(double gstRate);
+void updateProductsFile();
 
 // admin functions
 void loginAsAdmin();
@@ -75,20 +81,28 @@ void deleteAccount();
 void deleteProduct();
 void lowStock();
 void accountSearch();
+void dailySalesReport();
+void monthlySalesReport();
+void totalRevenueReport();
 
 void setColor(int color) {
     SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), color);
 }
 
 int main() {
+    srand(time(0));
     setColor(1);
-    cout << "\n----- Welcome to NextGen Supermarket -----\n" << endl;
+    cout << "\n============================ Welcome to NextGen Supermarket ============================\n" << endl;
     setColor(7);
     loginPanel();
     return 0;
 }
 
 void logout() {
+    for(int i = 0; i < 20; i++) {
+        item[i] = {};
+    }
+    cartItemsCount = 0;
     setColor(4);
     cout << "\n-------------------" << endl;
     cout << "Logout!" << endl;
@@ -116,19 +130,27 @@ void loginPanel() {
     }
     
     if(choice == 1) {
-        cout << "-------------------\n" << endl;
+        setColor(1);
+        cout << string(100, '=') << "\n" << endl;
+        setColor(7);
         loginAsUser();
     } else if(choice == 2) {
-        cout << "-------------------\n" << endl;
+        setColor(1);
+        cout << string(100, '=') << "\n" << endl;
+        setColor(7);
         loginAsAdmin();
     } else if(choice == 3) {
-        cout << "-------------------\n" << endl;
+        setColor(1);
+        cout << string(100, '=') << "\n" << endl;
+        setColor(7);
         createAccount();
     } else if(choice == 4) {
+        setColor(2);
+        cout << string(100, '=')<< endl;
+        cout << "Thanks for visiting our store!" << endl;
         setColor(4);
-        cout << "\n-------------------" << endl;
         cout << "App Closed!" << endl;
-        cout << "-------------------" << endl;
+        cout << string(100, '=') << "\n" << endl;
         setColor(7);
 
         exit(0);
@@ -204,7 +226,7 @@ void createAccount() {
 
 bool checkPasswordAuth(string password) {
     bool upper = false, lower = false, digit = false, special = false;
-    for(int i = 0; i <= password.length(); i++){
+    for(int i = 0; i < password.length(); i++){
         if(isupper(password[i])){
             upper = true;
         }else if(islower(password[i])){
@@ -258,7 +280,7 @@ void loginAsUser() {
         cout << "Login Successfully!" << endl;
         cout << "-------------------\n" << endl;
         setColor(7);
-        // moving to user-panel pending 
+        // moving to user-panel 
         userPanel();
     } else {
         setColor(4);
@@ -289,7 +311,6 @@ bool savingUserAccount(string username, string password) {
 }
 
 int createUserId() {
-    srand(time(0));
     int num = rand() % 500 + 1;
     Accounts account;
     ifstream file("users.txt");
@@ -318,7 +339,9 @@ int createUserId() {
 
 void userPanel() {
     int choice;
-    cout << "-------------------" << endl;
+    setColor(1);
+    cout << string(100, '=') << "\n" << endl;
+    setColor(7);
     cout << "1. Move To Inventory" << endl;
     cout << "2. Account Management" << endl;
     cout << "3. Logout" << endl;
@@ -336,11 +359,15 @@ void userPanel() {
     }
 
     if (choice == 1){
-        cout << "-------------------\n" << endl;
+        setColor(1);
+        cout << string(100, '=') << "\n" << endl;
+        setColor(7);
         userInventoryPanel();
     }
     else if (choice == 2){
-        cout << "-------------------\n" << endl;
+        setColor(1);
+        cout << string(100, '=') << "\n" << endl;
+        setColor(7);
         userAccManagePanel();
     }
     else if (choice == 3){
@@ -396,16 +423,170 @@ void displayProducts() {
 }
 
 void changePassword() {
-    //pending
-    //pending
-    //pending
+    ifstream infile("users.txt");
+    ofstream outfile("temp.txt");
+
+    if(!infile || !outfile) {
+        cout << "File error!\n";
+        return;
+    }
+
+    Accounts account;
+    string username, oldPass, newPass;
+    bool userFound = false;
+    bool passwordChanged = false;
+
+    cout << "Enter username: ";
+    cin >> username;
+    cout << "Enter old password: ";
+    cin >> oldPass;
+
+    while(infile >> account.id >> account.username >> account.password) {
+
+        if(account.username == username) {
+            userFound = true;
+
+            if(account.password == oldPass) {
+                while(true) {
+                    cout << "Enter new password: ";
+                    cin >> newPass;
+                    if(checkPasswordAuth(newPass)) {
+                        break;
+                    } else {
+                        setColor(4);
+                        cout << "Invalid password! Try Again" << endl;
+                        setColor(7);
+                    }
+                }
+
+                outfile << account.id << " "
+                        << account.username << " "
+                        << newPass << endl;
+
+                passwordChanged = true;
+            } else {
+                outfile << account.id << " "
+                        << account.username << " "
+                        << account.password << endl;
+            }
+        }
+        else {
+            outfile << account.id << " "
+                    << account.username << " "
+                    << account.password << endl;
+        }
+    }
+
+    infile.close();
+    outfile.close();
+
+    if(!userFound) {
+        setColor(4);
+        cout << "Username not found!\n";
+        setColor(7);
+        remove("temp.txt");
+    }
+    else if(!passwordChanged) {
+        setColor(4);
+        cout << "Old password is incorrect!\n";
+        setColor(7);
+        remove("temp.txt");
+    }
+    else {
+        remove("users.txt");
+        rename("temp.txt", "users.txt");
+
+        setColor(2);
+        cout << "-----------------------------\n";
+        cout << "Password changed successfully!\n";
+        cout << "-----------------------------\n";
+        setColor(7);
+    }
+
+    setColor(1);
+    cout << string(100, '=') << "\n" << endl;
+    setColor(7);
+    userAccManagePanel();
 }
 
 void changeUsername() {
-    //pending
-    //pending
-    //pending
+    ifstream infile("users.txt");
+    ofstream outfile("temp.txt");
+
+    if(!infile || !outfile) {
+        cout << "File error!\n";
+        return;
+    }
+
+    Accounts account;
+    string oldUsername, password, newUsername;
+    bool userFound = false;
+    bool usernameChanged = false;
+
+    cout << "Enter current username: ";
+    cin >> oldUsername;
+    cout << "Enter password: ";
+    cin >> password;
+
+    while(infile >> account.id >> account.username >> account.password) {
+
+        if(account.username == oldUsername) {
+            userFound = true;
+
+            if(account.password == password) {
+                cout << "Enter new username: ";
+                cin >> newUsername;
+
+                outfile << account.id << " "
+                        << newUsername << " "
+                        << account.password << endl;
+
+                usernameChanged = true;
+            } else {
+                outfile << account.id << " "
+                        << account.username << " "
+                        << account.password << endl;
+            }
+        }
+        else {
+            outfile << account.id << " "
+                    << account.username << " "
+                    << account.password << endl;
+        }
+    }
+
+    infile.close();
+    outfile.close();
+
+    if(!userFound) {
+        setColor(4);
+        cout << "Username not found!\n";
+        setColor(7);
+        remove("temp.txt");
+    }
+    else if(!usernameChanged) {
+        setColor(4);
+        cout << "Incorrect password!\n";
+        setColor(7);
+        remove("temp.txt");
+    }
+    else {
+        remove("users.txt");
+        rename("temp.txt", "users.txt");
+
+        setColor(2);
+        cout << "----------------------------\n";
+        cout << "Username changed successfully!\n";
+        cout << "----------------------------\n";
+        setColor(7);
+    }
+
+    setColor(1);
+    cout << string(100, '=') << "\n" << endl;
+    setColor(7);
+    userAccManagePanel();
 }
+
 
 void userAccManagePanel() {
     int choice;
@@ -427,13 +608,19 @@ void userAccManagePanel() {
     }
 
     if(choice == 1) {
-        cout << "-------------------\n" << endl;
+        setColor(1);
+        cout << string(100, '=') << "\n" << endl;
+        setColor(7);
         changePassword();
     } else if(choice == 2) {
-        cout << "-------------------\n" << endl;
+        setColor(1);
+        cout << string(100, '=') << "\n" << endl;
+        setColor(7);
         changeUsername();
     } else if(choice == 3) {
-        cout << "-------------------\n" << endl;
+        setColor(1);
+        cout << string(100, '=') << "\n" << endl;
+        setColor(7);
         userPanel();
     } else if(choice == 4) {
         logout();
@@ -463,30 +650,46 @@ void userInventoryPanel() {
     }
 
     if(choice == 1) {
-        cout << "-------------------\n" << endl;
+        setColor(1);
+        cout << string(100, '=') << "\n" << endl;
+        setColor(7);
         displayProducts();
-        cout << "-------------------\n" << endl;
+        setColor(1);
+        cout << string(100, '=') << "\n" << endl;
+        setColor(7);
         cart();
     } else if(choice == 2) {
-        cout << "-------------------\n" << endl;
+        setColor(1);
+        cout << string(100, '=') << "\n" << endl;
+        setColor(7);
         filterPanel("user");
-        cout << "-------------------\n" << endl;
+        setColor(1);
+        cout << string(100, '=') << "\n" << endl;
+        setColor(7);
         cart();
     } else if(choice == 3) {
-        cout << "-------------------\n" << endl;
+        setColor(1);
+        cout << string(100, '=') << "\n" << endl;
+        setColor(7);
         searchProduct();
-        cout << "-------------------\n" << endl;
+        setColor(1);
+        cout << string(100, '=') << "\n" << endl;
+        setColor(7);
         cart();
     } else if(choice == 4) {
-        cout << "-------------------\n" << endl;
+        setColor(1);
+        cout << string(100, '=') << "\n" << endl;
+        setColor(7);
         viewCart();
     } else if(choice == 5) {
-        cout << "-------------------\n" << endl;
-        // pending
-        // pending
-        // pending
+        setColor(1);
+        cout << string(100, '=') << "\n" << endl;
+        setColor(7);
+        printBill();
     } else if(choice == 6) {
-        cout << "-------------------\n" << endl;
+        setColor(1);
+        cout << string(100, '=') << "\n" << endl;
+        setColor(7);
         userPanel();
     } else if(choice == 7) {
         logout();
@@ -519,7 +722,8 @@ void filterPanel(string s) {
         ifstream file("products.txt");
 
         setColor(1);
-        cout << "\nAvailable Brands Are:\n" << endl;
+        cout << "\nAvailable Brands Are:" << endl;
+        cout << "--------------------\n";
         setColor(7);
         set<string> brands; 
 
@@ -528,16 +732,20 @@ void filterPanel(string s) {
         }
         file.close();
 
-        for (const string &brand : brands) {
-            cout << brand << endl;
-        }   
+        int count = 1;
+        for(const string &brand : brands) {
+            cout << count << ". " << brand << endl;
+            count++;
+        }
 
         string brand;
         cout << "\nEnter brand name: ";
         cin >> brand;
 
         filter1(brand, "Brand");
-        cout << "-------------------\n" << endl;
+        setColor(1);
+        cout << string(100, '=') << "\n" << endl;
+        setColor(7);
         filterPanel(s);
 
     } else if(choice == 2) {
@@ -546,7 +754,8 @@ void filterPanel(string s) {
         ifstream file("products.txt");
 
         setColor(1);
-        cout << "\nAvailable Categories Are:\n" << endl;
+        cout << "\nAvailable Categories Are:" << endl;
+        cout << "-----------------\n";
         setColor(7);
         set<string> categories;
 
@@ -555,8 +764,10 @@ void filterPanel(string s) {
         }
         file.close();
 
+        int count = 1;
         for (const string &category : categories) {
-            cout << category << endl;
+            cout << count << ". " << category << endl;
+            count++;
         } 
 
         string category;
@@ -564,13 +775,17 @@ void filterPanel(string s) {
         cin >> category;
         
         filter1(category, "Category");
-        cout << "-------------------\n" << endl;
+        setColor(1);
+        cout << string(100, '=') << "\n" << endl;
+        setColor(7);
         filterPanel(s);
 
     }else if(choice == 3) {
 
         int min, max;
-        cout << "-------------------\n" << endl;
+        setColor(1);
+        cout << string(100, '=') << "\n" << endl;
+        setColor(7);
         cout << "Filter from Rs: ";
         cin >> min;
         cout << "Filter to Rs: ";
@@ -587,13 +802,17 @@ void filterPanel(string s) {
         }
 
         filter2(min, max, "Price");
-        cout << "-------------------\n" << endl;
+        setColor(1);
+        cout << string(100, '=') << "\n" << endl;
+        setColor(7);
         filterPanel(s);
 
     }else if(choice == 4) {
 
         int min, max;
-        cout << "-------------------\n" << endl;
+        setColor(1);
+        cout << string(100, '=') << "\n" << endl;
+        setColor(7);
         cout << "Filter from Quantity: ";
         cin >> min;
         cout << "Filter to Quantity: ";
@@ -611,15 +830,21 @@ void filterPanel(string s) {
         }
 
         filter2(min, max, "Quantity");
-        cout << "-------------------\n" << endl;
+        setColor(1);
+        cout << string(100, '=') << "\n" << endl;
+        setColor(7);
         filterPanel(s);
 
     }else if(choice == 5) {
         if(s == "user") {
-            cout << "-------------------\n" << endl;
+            setColor(1);
+            cout << string(100, '=') << "\n" << endl;
+            setColor(7);
             userInventoryPanel();
         } else if(s == "admin") {
-            cout << "-------------------\n" << endl;
+            setColor(1);
+            cout << string(100, '=') << "\n" << endl;
+            setColor(7);
             adminInventoryPanel();
         }
     }else if(choice == 6) {
@@ -748,7 +973,7 @@ void filter2(int min, int max, string filterBy) {
 }
 
 string toLowerStr(string s) {
-    for(int i = 0; i <= s.length(); i++) {
+    for(int i = 0; i < s.length(); i++) {
         s[i] = tolower(s[i]);
     } 
     return s;
@@ -820,10 +1045,14 @@ void cart() {
     }
 
     if(choice == 1) {
-        cout << "-------------------\n" << endl;
+        setColor(1);
+        cout << string(100, '=') << "\n" << endl;
+        setColor(7);
         addToCart();
     } else if(choice == 2) {
-        cout << "-------------------\n" << endl;
+        setColor(1);
+        cout << string(100, '=') << "\n" << endl;
+        setColor(7);
         userInventoryPanel();
     }
 }
@@ -843,39 +1072,36 @@ void viewCart() {
          << setw(20) << "Name"
          << setw(20) << "Price per Unit(Rs)"
          << setw(20) << "Total Price(Rs)"
-         << setw(15) << "Brand"
-         << setw(20) << "Category"
          << setw(15) << "Quantity"
          << endl;
 
-    cout << string(130, '-') << endl;
+    cout << string(110, '-') << endl;
     setColor(7);
 
     if(cartItemsCount == 0) {
         setColor(4);
         cout << "No item added in cart!" << endl;
         setColor(7);
-        cout << "-------------------\n" << endl;
+        setColor(1);
+        cout << string(100, '=') << "\n" << endl;
+        setColor(7);
         userInventoryPanel();
         return;
     }
 
-    while(file >> product.id >> product.name >> product.price >> product.brand >> product.category >> product.quantity) {
-        for(int i = 0; i <= cartItemsCount; i++) {
-            if(item[i].productId == product.id) {
-                cout << setw(15) << product.id 
-                << setw(20) << product.name
-                << setw(20) << product.price
-                << setw(20) << product.price * item[i].quantity
-                << setw(15) << product.brand
-                << setw(20) << product.category
-                << setw(15) << item[i].quantity
-                << endl;
-            }
-        }
+    for(int i = 0; i < cartItemsCount; i++) {
+        cout << setw(15) << item[i].id
+            << setw(20) << item[i].name
+            << setw(20) << item[i].price
+            << setw(20) << item[i].price * item[i].quantity
+            << setw(15) << item[i].quantity
+            << endl;
     }
+    
     file.close();
-    cout << "-------------------\n" << endl;
+    setColor(1);
+    cout << string(100, '=') << "\n" << endl;
+    setColor(7);
     userInventoryPanel();
 }
 
@@ -912,7 +1138,9 @@ void addToCart() {
                     cout << "-------------------\n" << endl;
                     setColor(7);
                 } else {
-                    item[cartItemsCount].productId = id;
+                    item[cartItemsCount].id = id;
+                    item[cartItemsCount].name = product.name;
+                    item[cartItemsCount].price = product.price;
                     item[cartItemsCount].quantity = quantity;
                     cartItemsCount++;
 
@@ -942,7 +1170,9 @@ void addToCart() {
         cin >> choice;
     }
 
-    cout << "-------------------\n" << endl;
+    setColor(1);
+    cout << string(100, '=') << "\n" << endl;
+    setColor(7);
     userInventoryPanel();
 }
 
@@ -992,13 +1222,19 @@ void adminPanel() {
     }
     
     if(choice == 1) {
-        cout << "-------------------\n" << endl;
+        setColor(1);
+        cout << string(100, '=') << "\n" << endl;
+        setColor(7);
         adminInventoryPanel();
     } else if(choice == 2) {
-        cout << "-------------------\n" << endl;
+        setColor(1);
+        cout << string(100, '=') << "\n" << endl;
+        setColor(7);
         adminAccManagePanel();
     } else if(choice == 3) {
-        cout << "-------------------\n" << endl;
+        setColor(1);
+        cout << string(100, '=') << "\n" << endl;
+        setColor(7);
         salesReportPanel();
     } else if(choice == 4) {
         logout();
@@ -1009,15 +1245,14 @@ void salesReportPanel() {
     int choice;
     cout << "1. Total Revenue Report" << endl;
     cout << "2. Daily Sales Report" << endl;
-    cout << "3. Weekly Sales Report" << endl;
-    cout << "4. Monthly Sales Report" << endl;
-    cout << "5. Go Back" << endl;
-    cout << "6. Logout" << endl;
+    cout << "3. Monthly Sales Report" << endl;
+    cout << "4. Go Back" << endl;
+    cout << "5. Logout" << endl;
 
     while(true) {
-        cout << "Enter choice(1-6): ";
+        cout << "Enter choice(1-5): ";
         cin >> choice;
-        if(choice >= 1 && choice <= 6) {
+        if(choice >= 1 && choice <= 5) {
             break;
         } else {
             setColor(4);
@@ -1025,9 +1260,30 @@ void salesReportPanel() {
             setColor(7);
         }
     }
-    // pending
-    // pending
-    // pending
+    
+    if(choice == 1) {
+        setColor(1);
+        cout << string(100, '=') << "\n" << endl;
+        setColor(7);
+        totalRevenueReport();
+    } else if(choice == 2) {
+        setColor(1);
+        cout << string(100, '=') << "\n" << endl;
+        setColor(7);
+        dailySalesReport();
+    } else if(choice == 3) {
+        setColor(1);
+        cout << string(100, '=') << "\n" << endl;
+        setColor(7);
+        monthlySalesReport();
+    } else if(choice == 4) {
+        setColor(1);
+        cout << string(100, '=') << "\n" << endl;
+        setColor(7);
+        adminPanel();
+    } else if(choice == 5) {
+        logout();
+    }
 }
 
 void addProduct() {
@@ -1118,7 +1374,6 @@ void updateProduct() {
                   >> product.brand >> product.category >> product.quantity) {
         if (product.id == id) {
             found = true;
-            product.id = createProductId();
             cout << "Enter new Name: ";
             cin >> product.name;
             cout << "Enter new Price: ";
@@ -1131,8 +1386,12 @@ void updateProduct() {
             cin >> product.quantity;
         }
 
-        outfile << product.id << " " << product.name << " " << product.price << " "
-                << product.brand << " " << product.category << " " << product.quantity << "\n";
+        outfile << product.id 
+                << " " << product.name 
+                << " " << product.price 
+                << " " << product.brand 
+                << " " << product.category 
+                << " " << product.quantity << "\n";
     }
 
     infile.close();
@@ -1292,7 +1551,9 @@ void accountSearch() {
         cout << "Account not found!" << endl;
         setColor(7);
     }
-    cout << "-------------------\n" << endl;
+    setColor(1);
+    cout << string(100, '=') << "\n" << endl;
+    setColor(7);
     adminAccManagePanel();
 }
 
@@ -1317,6 +1578,7 @@ void lowStock() {
     cout << string(100, '-') << endl;
     setColor(7);
 
+    int count = 0;
     while (file >> product.id >> product.name >> product.price >> product.brand >> product.category >> product.quantity) {
         if(product.quantity <= 10) {
             cout << setw(15) << product.id 
@@ -1330,12 +1592,20 @@ void lowStock() {
     }
 
     file.close();
-    cout << "-------------------\n" << endl;
+
+    if(count == 0) {
+        setColor(2);
+        cout << "All products are sufficiently stocked!" << endl;
+        setColor(7);
+    }
+
+    setColor(1);
+    cout << string(100, '=') << "\n" << endl;
+    setColor(7);
     adminInventoryPanel();
 }
 
 int createProductId() {
-    srand(time(0));
     int num = rand() % 500 + 1;
     Product product;
     ifstream file("products.txt");
@@ -1383,18 +1653,28 @@ void adminAccManagePanel() {
     }
 
     if(choice == 1) {
-        cout << "-------------------\n" << endl;
+        setColor(1);
+        cout << string(100, '=') << "\n" << endl;
+        setColor(7);
         deleteAccount();
     } else if(choice == 2) {
-        cout << "-------------------\n" << endl;
+        setColor(1);
+        cout << string(100, '=') << "\n" << endl;
+        setColor(7);
         displayAccounts();
-        cout << "-------------------\n" << endl;
+        setColor(1);
+        cout << string(100, '=') << "\n" << endl;
+        setColor(7);
         adminAccManagePanel();
     } else if(choice == 3) {
-        cout << "-------------------\n" << endl;
+        setColor(1);
+        cout << string(100, '=') << "\n" << endl;
+        setColor(7);
         accountSearch();
     } else if(choice == 4) {
-        cout << "-------------------\n" << endl;
+        setColor(1);
+        cout << string(100, '=') << "\n" << endl;
+        setColor(7);
         adminPanel();
     } else if(choice == 5) {
         logout();
@@ -1426,34 +1706,315 @@ void adminInventoryPanel() {
     }
     
     if(choice == 1) {
-        cout << "-------------------\n" << endl;
+        setColor(1);
+        cout << string(100, '=') << "\n" << endl;
+        setColor(7);
         addProduct();
     } else if(choice == 2) {
-        cout << "-------------------\n" << endl;
+        setColor(1);
+        cout << string(100, '=') << "\n" << endl;
+        setColor(7);
         updateProduct();
     } else if(choice == 3) {
-        cout << "-------------------\n" << endl;
+        setColor(1);
+        cout << string(100, '=') << "\n" << endl;
+        setColor(7);
         deleteProduct();
     } else if(choice == 4) {
-        cout << "-------------------\n" << endl;
+        setColor(1);
+        cout << string(100, '=') << "\n" << endl;
+        setColor(7);
         searchProduct();
-        cout << "-------------------\n" << endl;
+        setColor(1);
+        cout << string(100, '=') << "\n" << endl;
+        setColor(7);
         adminInventoryPanel();
     } else if(choice == 5) {
-        cout << "-------------------\n" << endl;
+        setColor(1);
+        cout << string(100, '=') << "\n" << endl;
+        setColor(7);
         displayProducts();
-        cout << "-------------------\n" << endl;
+        setColor(1);
+        cout << string(100, '=') << "\n" << endl;
+        setColor(7);
         adminInventoryPanel();
     } else if(choice == 6) {
-        cout << "-------------------\n" << endl;
+        setColor(1);
+        cout << string(100, '=') << "\n" << endl;
+        setColor(7);
         lowStock();
     } else if(choice == 7) {
-        cout << "-------------------\n" << endl;
+        setColor(1);
+        cout << string(100, '=') << "\n" << endl;
+        setColor(7);
         filterPanel("admin");
     } else if(choice == 8) {
-        cout << "-------------------\n" << endl;
+        setColor(1);
+        cout << string(100, '=') << "\n" << endl;
+        setColor(7);
         adminPanel();
     } else if(choice == 9) {
         logout();
     }
+}
+
+string getCurrentDateTime() {
+    time_t now = time(0);
+    tm *ltm = localtime(&now);
+
+    char buffer[25];
+    strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", ltm);
+    return string(buffer);
+}
+
+void saveSale(double gstRate) {
+    ofstream sales("sales.txt", ios::app);
+    if(!sales) return;
+
+    string dateTime = getCurrentDateTime();
+
+    for(int i = 0; i < cartItemsCount; i++) {
+        double total = item[i].quantity * item[i].price;
+        double gst = total * gstRate;
+        double netTotal = total + gst;
+
+        sales << dateTime << " "
+              << item[i].id << " "
+              << item[i].name << " "
+              << item[i].quantity << " "
+              << item[i].price << " "
+              << total << " "
+              << gst << " "
+              << netTotal << endl;
+    }
+
+    sales.close();
+}
+
+void updateProductsFile() {
+    ifstream infile("products.txt");
+    ofstream outfile("temp.txt");
+
+    if(!infile || !outfile) {
+        cout << "Error opening file!" << endl;
+        return;
+    }
+
+    Product product;
+    while(infile >> product.id >> product.name >> product.price >> product.brand >> product.category >> product.quantity) {
+        for(int i = 0; i < cartItemsCount; i++) {
+            if(product.id == item[i].id) {
+                product.quantity -= item[i].quantity;
+            }
+        }
+        outfile << product.id << " " << product.name << " " << product.price << " " << product.brand << " " << product.category << " " << product.quantity << "\n";
+    }
+
+    infile.close();
+    outfile.close();
+
+    remove("products.txt");
+    rename("temp.txt", "products.txt");
+}
+
+void printBill() {
+    if(cartItemsCount == 0) {
+        setColor(4);
+        cout << "No item in cart to generate bill!" << endl;
+        setColor(7);
+        cout << string(100, '=') << "\n" << endl;
+        userInventoryPanel();
+        return;
+    }
+
+    double subtotal = 0;
+    double gstRate = 0.18;
+    string dateTime = getCurrentDateTime();
+
+    // Header
+    setColor(2);
+    cout << "\n================================================== INVOICE ==================================================\n";
+    setColor(7);
+    cout << "Date & Time: " << dateTime << endl;
+
+    setColor(1);
+    cout << left;
+    cout << setw(5) << "ID"
+         << setw(20) << "Item"
+         << setw(10) << "Qty"
+         << setw(12) << "Price"
+         << setw(12) << "Amount" << endl;
+
+    cout << string(60, '-') << endl;
+    setColor(7);
+
+    // Items
+    for(int i = 0; i < cartItemsCount; i++) {
+        double amount = item[i].quantity * item[i].price;
+        subtotal += amount;
+        cout << left;
+        cout << setw(5) << item[i].id
+             << setw(20) << item[i].name
+             << setw(10) << item[i].quantity
+             << setw(12) << item[i].price
+             << setw(12) << amount << endl;
+    }
+
+    cout << string(60, '-') << endl;
+
+    // Discount
+    double discount = 0;
+    if(subtotal > 5000) discount = subtotal * 0.10;
+    else if(subtotal > 3000) discount = subtotal * 0.05;
+
+    double afterDiscount = subtotal - discount;
+    double gstAmount = afterDiscount * gstRate;
+    double netTotal = afterDiscount + gstAmount;
+
+    cout << right << setw(47) << "Subtotal: Rs. " << subtotal << endl;
+    cout << setw(47) << "Discount: Rs. " << discount << endl;
+    cout << setw(47) << "GST (18%): Rs. " << gstAmount << endl;
+    cout << setw(47) << "Net Payable: Rs. " << netTotal << endl;
+    cout << string(60, '-') << endl;
+
+    saveSale(gstRate);
+    updateProductsFile();
+    for(int i = 0; i < 20; i++) {
+        item[i] = {};
+    }
+    cartItemsCount = 0;
+
+    setColor(1);
+    cout << string(100, '=') << "\n" << endl;
+    setColor(7);
+    userInventoryPanel();
+}
+
+void dailySalesReport() {
+    ifstream sales("sales.txt");
+    if(!sales) {
+        cout << "No sales data found!\n";
+        return;
+    }
+
+    string date, time, name;
+    int id, qty;
+    double price, total, gst, net;
+
+    string dates[100];
+    double revenue[100];
+    int count = 0;
+
+    while(sales >> date >> time >> id >> name >> qty >> price >> total >> gst >> net) {
+        bool found = false;
+
+        for(int i = 0; i < count; i++) {
+            if(dates[i] == date) {
+                revenue[i] += net;
+                found = true;
+                break;
+            }
+        }
+
+        if(!found) {
+            dates[count] = date;
+            revenue[count] = net;
+            count++;
+        }
+    }
+
+    sales.close();
+
+    setColor(2);
+    cout << "\n======================= DAILY SALES REPORT =======================\n";
+    setColor(7);
+    for(int i = 0; i < count; i++) {
+        cout << dates[i] << "  Total Revenue: Rs. " << revenue[i] << endl;
+    }
+
+    setColor(1);
+    cout << string(100, '=') << "\n" << endl;
+    setColor(7);
+    salesReportPanel();
+}
+
+void monthlySalesReport() {
+    ifstream sales("sales.txt");
+    if(!sales) {
+        cout << "No sales data found!\n";
+        return;
+    }
+
+    string date, time, name;
+    int id, qty;
+    double price, total, gst, net;
+
+    string months[50];
+    double revenue[50];
+    int count = 0;
+
+    while(sales >> date >> time >> id >> name >> qty >> price >> total >> gst >> net) {
+        string month = date.substr(0, 7);
+        bool found = false;
+
+        for(int i = 0; i < count; i++) {
+            if(months[i] == month) {
+                revenue[i] += net;
+                found = true;
+                break;
+            }
+        }
+
+        if(!found) {
+            months[count] = month;
+            revenue[count] = net;
+            count++;
+        }
+    }
+
+    sales.close();
+
+    setColor(2);
+    cout << "\n======================= MONTHLY SALES REPORT =======================\n";
+    setColor(7);
+
+    for(int i = 0; i < count; i++) {
+        cout << months[i] << "  Total Revenue: Rs. " << revenue[i] << endl;
+    }
+
+    setColor(1);
+    cout << string(100, '=') << "\n" << endl;
+    setColor(7);
+    salesReportPanel();
+}
+
+
+void totalRevenueReport() {
+    ifstream sales("sales.txt");
+    if(!sales) {
+        cout << "No sales data found!\n";
+        return;
+    }
+
+    string date, time, name;
+    int id, qty;
+    double price, total, gst, net;
+
+    double grandTotal = 0;
+
+    while(sales >> date >> time >> id >> name >> qty >> price >> total >> gst >> net) {
+        grandTotal += net;
+    }
+
+    sales.close();
+
+    setColor(2);
+    cout << "\n======================= TOTAL REVENUE REPORT =======================\n";
+    setColor(7);
+    cout << "Overall Revenue: Rs. " << grandTotal << endl;
+
+    setColor(1);
+    cout << string(100, '=') << "\n" << endl;
+    setColor(7);
+    salesReportPanel();
 }
