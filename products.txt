@@ -122,3 +122,4 @@
 187 HandBag 12500 FashionLine Fashion 30
 401 Bracelet 6200 FashionLine Fashion 40
 278 Boots 18500 FashionLine Fashion 60
+479 Lays 50 Lays Food 20
